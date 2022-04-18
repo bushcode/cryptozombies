@@ -21,10 +21,21 @@ contract KittyInterface {
 }
 
 contract ZombieFeeding is ZombieFactory {
-    //crypto kitty contract address
-    address ckAddress = 0x06012c8cf97BEaD5deAe237070F9587f8E7A266d;
-    // Initialize kittyContract here using `ckAddress` from above
-    KittyInterface kittyContract = KittyInterface(ckAddress);
+    // an interface to set cryptokitties contract address
+    KittyInterface kittyContract;
+
+    //external function that implements the kitty address interface
+    function setKittyContractAddress(address _address) external onlyOwner {
+        kittyContract = KittyInterface(_address);
+    }
+
+    function _triggerCooldown(Zombie storage _zombie) internal {
+        _zombie.readyTime = uint32(now + cooldownTime);
+    }
+
+    function _isReady(Zombie storage _zombie) internal view returns (bool) {
+        return (_zombie.readyTime <= now);
+    }
 
     function feedAndMultiply(
         uint256 _zombieId,
@@ -35,6 +46,7 @@ contract ZombieFeeding is ZombieFactory {
         require(msg.sender == zombieToOwner[_zombieId]);
         //storage variable to hold the zombie object from the Zombie array
         Zombie storage myZombie = zombies[_zombieId];
+        require(_isReady(myZombie));
 
         // make sure target dna isnt longer than 16 digits
         _targetDna = _targetDna % dnaModulus;
@@ -49,6 +61,7 @@ contract ZombieFeeding is ZombieFactory {
             newDna = newDna - (newDna % 100) + 99;
         }
         _createZombie("NoName", newDna);
+        _triggerCooldown(myZombie);
     }
 
     //funtion to feed zombie a kitty
